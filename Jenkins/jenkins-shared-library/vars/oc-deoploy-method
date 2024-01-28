@@ -1,0 +1,11 @@
+def call(String openshiftServer, String openshiftSecret, String openshiftProject, String dockerImage, String appName, String appPort, String appHostName) {
+    script {
+        withCredentials([string(credentialsId: 'openshift-credentials', variable: 'OPENSHIFT_SECRET')]) {
+            sh "oc login --token=\${openshiftSecret} \${openshiftServer} --insecure-skip-tls-verify"
+        }
+        sh "oc project \${openshiftProject}"
+        sh "oc delete dc,svc,deploy,ingress,route \${dockerImage} || true"
+        sh "oc new-app \${dockerImage}"
+        sh "oc create route edge --service \${appName} --port \${appPort} --hostname \${appHostName} --insecure-policy Redirect"
+    }
+}

@@ -1,0 +1,110 @@
+@Library('jenkins-shared-library') _
+
+pipeline {
+    agent any
+
+    parameters {
+        string(defaultValue: 'dev', description: 'Git branch to checkout', name: 'GIT_BRANCH')
+        string(defaultValue: 'docker.io/mennaahisham', description: 'Docker Registry', name: 'DOCKER_REGISTRY')
+        string(defaultValue: 'spring-boot-app', description: 'Docker Image Name', name: 'DOCKER_IMAGE')
+        string(defaultValue: 'menna', description: 'OpenShift Project', name: 'OPENSHIFT_PROJECT')
+        string(defaultValue: 'https://api.ocpuat.devopsconsulting.org:6443', description: 'OpenShift Server URL', name: 'OPENSHIFT_SERVER')
+        string(defaultValue: 'spring-boot-app', description: 'Application Service Name', name: 'APP_SERVICE_NAME')
+        string(defaultValue: '8080', description: 'Application Port', name: 'APP_PORT')
+        string(defaultValue: 'spring-boot-app.apps.ocpuat.devopsconsulting.org', description: 'Application Hostname', name: 'APP_HOST_NAME')
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                script {
+                    git branch: params.GIT_BRANCH, url: 'https://github.com/EngMohamedElEmam/spring-boot-app'
+                }
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                script {
+                    docker.build("${params.DOCKER_REGISTRY}/${params.DOCKER_IMAGE}:${BUILD_NUMBER}")
+                }
+            }
+        }
+
+        stage('Push Docker Image') {
+            steps {
+                script {
+                    withCredentials([usernamePassword(credentialsId: 'docker-creds', usernameVariable: 'DOCKER_REGISTRY_USERNAME', passwordVariable: 'DOCKER_REGISTRY_PASSWORD')]) {
+                        sh "echo \${DOCKER_REGISTRY_PASSWORD} | docker login -u \${DOCKER_REGISTRY_USERNAME} --password-stdin"
+                        docker.image("${params.DOCKER_REGISTRY}/${params.DOCKER_IMAGE}:${BUILD_NUMBER}").push()
+                    }
+                }
+            }
+        }
+
+        stage('Deploy to OpenShift') {
+            steps {
+                oc-deploy-method("${params.OPENSHIFT_SERVER}", "${params.OPENSHIFT_SECRET}", "${params.OPENSHIFT_PROJECT}", "${params.DOCKER_IMAGE}:${BUILD_NUMBER}", "${params.APP_SERVICE_NAME}", "${params.APP_PORT}", "${params.APP_HOST_NAME}")
+            }
+        }
+
+        stage('Gradle Unit Test') {
+            steps {
+                withGradle {
+                     sh './gradlew test'
+                }
+            }
+        }
+
+	stage('Test-Image'){
+	    steps {
+ 	       script {
+        	    try {                           
+                	def status = 0
+	                status = sh(returnStdout: true, script: "container-structure-test test --image 'params.DOCKER_IMAGE' --config './test/DockerTest/unit-test.yaml' --json | jq .Fail") as Integer
+        	        if (status != 0) {                            
+                	    error 'Image Test has failed'
+ 	               }
+	
+        	    } catch (err) {
+                	error "Test-Image ERROR: The execution of the container structure tests failed, see the log for details."
+              	  echo err
+	            } 
+        	}
+	    }
+	}
+
+	stage('Test Pods to be Running') {
+	    steps {
+	        script {
+	            // Wait for pods related to the DeploymentConfig to reach the "Running" phase with a timeout of 5 minutes
+	            timeout(time: 5, unit: 'MINUTES') {
+	                openshift.selector("dc", params.DOCKER_IMAGE).related('pods').untilEach(1) {
+	                    return (it.object().status.phase == "Running")
+	                }
+	            }
+	        }
+	    }
+	}
+
+
+
+
+	        stage("SonarQube Analysis") {
+	    agent any
+	    steps {
+	        script {
+	            withSonarQubeEnv('My SonarQube Server') {
+	                sh './gradlew sonarqube'
+	            }
+	        }
+	    }
+	}
+
+	stage("Quality Gate") {
+	    steps {
+	        timeout(time: 1, unit: 'HOURS') {
+	            waitForQualityGate abortPipeline: true
+	        }
+	    }
+	}
