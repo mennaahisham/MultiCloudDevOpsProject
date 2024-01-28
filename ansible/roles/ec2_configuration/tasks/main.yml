@@ -1,0 +1,8 @@
+# Ansible role (roles/ec2_configuration/tasks/main.yml)
+---
+# Continue with EC2 configuration using the variables...
+- name: Set EC2 variables
+  set_fact:
+    vpc_id: "vpc-12345678"          # Use the dummy VPC ID
+    ec2_instance_id: "i-abcdefgh"   # Use the dummy EC2 instance ID
+    

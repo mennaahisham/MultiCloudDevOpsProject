@@ -1,0 +1,11 @@
+---
+- name: EC2 Instance Configuration
+  hosts: ec2_instances
+  become: yes
+  remote_user: "{{ ssh_user }}"
+
+  roles:
+    - ec2_configuration
+    - common
+    - jenkins
+    - sonarqube

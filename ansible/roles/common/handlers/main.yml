@@ -1,0 +1,15 @@
+---
+- name: Restart Docker
+  service:
+    name: docker
+    state: restarted
+  listen: "Restart Docker"
+  tags: common
+
+- name: Restart Java Service
+  service:
+    name: java_service_name
+    state: restarted
+  listen: "Restart Java"
+  tags: common
+

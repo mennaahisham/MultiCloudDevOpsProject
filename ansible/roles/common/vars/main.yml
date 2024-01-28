@@ -1,0 +1,4 @@
+# vars file for common
+docker_environment_file: /etc/environment_docker
+java_environment_file: /etc/environment_java
+
