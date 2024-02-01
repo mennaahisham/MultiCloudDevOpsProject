@@ -11,6 +11,9 @@ COPY build.gradle settings.gradle ./
 COPY gradlew .
 COPY gradle gradle
 
+# Set executable permission for the Gradle Wrapper script
+RUN chmod +x gradlew
+
 # Download and resolve dependencies using the Gradle Wrapper
 RUN ./gradlew dependencies
 
