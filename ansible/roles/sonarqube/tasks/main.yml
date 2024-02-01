@@ -1,0 +1,7 @@
+---
+# tasks file for sonarqube
+- name: Install SonarQube
+  package:
+    name: sonarqube
+    state: present
+

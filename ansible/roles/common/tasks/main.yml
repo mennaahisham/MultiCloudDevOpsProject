@@ -1,0 +1,26 @@
+---
+- become: yes
+
+# tasks file for common
+- name: Install Git
+  yum:
+    name: git
+    state: present
+
+- name: Install Docker
+  yum:
+    name: docker
+    state: present
+
+
+- name: Install Java
+  yum:
+    name: java-1.8.0-openjdk
+    state: present
+
+- name: Set up Java environment variables
+  lineinfile:
+    path: "{{ java_environment_file }}"
+    line:line: "export JAVA_HOME=/usr/lib/jvm/java-1.8.0-openjdk"
+  tags: common
+
